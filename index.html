@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>METAR Display - Multiple Stations</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #0a192f;
+      color: #e0fbfc;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.4;
+    }
+    #container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #112240;
+      border: 1px solid #233554;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-size: 1.6rem;
+      color: #64ffda;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    #metar-text {
+      white-space: pre-wrap;
+      background: #0d1b2a;
+      padding: 1.2rem;
+      border-radius: 6px;
+      border: 1px solid #415a77;
+      font-size: 1.4rem;  /* Larger for TV/signage visibility */
+      min-height: 200px;
+      line-height: 1.5;
+    }
+    .loading {
+      color: #8892b0;
+      font-style: italic;
+    }
+    .error {
+      color: #ff6b6b;
+      font-style: italic;
+    }
+    .timestamp {
+      font-size: 1rem;
+      color: #8892b0;
+      margin-top: 1rem;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <h1>METARs: KTUL, KTIK, KIAB, KSLN, KFSM, KXNA, KEND</h1>
+  <div id="metar-text" class="loading">Loading latest METARs...</div>
+  <div id="timestamp" class="timestamp"></div>
+</div>
+
+<script>
+  const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+
+  async function fetchAndDisplayMETAR() {
+    const textEl = document.getElementById('metar-text');
+    const timeEl = document.getElementById('timestamp');
+
+    try {
+      const response = await fetch(METAR_URL, {
+        headers: {
+          'User-Agent': 'METAR-Display-App/1.0 (rykervlirley@gmail.com)'  // ← Customize with your real contact/email/domain
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      }
+
+      const rawText = await response.text();
+
+      textEl.textContent = rawText.trim() || 'No METAR data available right now.';
+      textEl.classList.remove('loading', 'error');
+
+      const now = new Date();
+      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
+    } catch (err) {
+      textEl.textContent = `Error loading METARs: ${err.message}\n\n(If CORS error: API blocks cross-origin fetches. Try removing User-Agent header or use a proxy fallback.)`;
+      textEl.classList.add('error');
+      console.error('Fetch error:', err);
+    }
+  }
+
+  // Load immediately
+  fetchAndDisplayMETAR();
+
+  // Refresh every 10 minutes
+  setInterval(fetchAndDisplayMETAR, 600000);
+</script>
+
+</body>
+</html>
