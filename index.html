@@ -23,7 +23,7 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
     h1 {
-      font-size: 1.6rem;
+      font-size: 1.2rem;
       color: #64ffda;
       margin-bottom: 1rem;
       text-align: center;
@@ -34,24 +34,13 @@
       padding: 1.2rem;
       border-radius: 6px;
       border: 1px solid #415a77;
-      font-size: 1.4rem;  /* Larger for TV/signage visibility */
+      font-size: 1.4rem;
       min-height: 200px;
       line-height: 1.5;
     }
-    .loading {
-      color: #8892b0;
-      font-style: italic;
-    }
-    .error {
-      color: #ff6b6b;
-      font-style: italic;
-    }
-    .timestamp {
-      font-size: 1rem;
-      color: #8892b0;
-      margin-top: 1rem;
-      text-align: right;
-    }
+    .loading { color: #8892b0; font-style: italic; }
+    .error { color: #ff6b6b; font-style: italic; white-space: pre-wrap; }
+    .timestamp { font-size: 1rem; color: #8892b0; margin-top: 1rem; text-align: right; }
   </style>
 </head>
 <body>
@@ -69,19 +58,16 @@
     const textEl = document.getElementById('metar-text');
     const timeEl = document.getElementById('timestamp');
 
-    try {
-      const response = await fetch(
-        const PROXY = 'https://cors.sh/'
-      const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+    textEl.classList.remove('error');
+    textEl.classList.add('loading');
+    textEl.textContent = 'Loading latest METARs...';
 
-      async function fetchAndDisplayMETAR() {
-        const response = await fetch(PROXY + METAR_URL, {
-          headers: { 'User-Agent': 'METAR-Display-App/1.0 (rykervlirley@gmail.com)' }
-        });
-      }
+    try {
+      // No custom User-Agent → keeps request "simple" (no preflight OPTIONS)
+      const response = await fetch(METAR_URL);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+        throw new Error(`Server responded with HTTP ${response.status} ${response.statusText}`);
       }
 
       const rawText = await response.text();
@@ -90,21 +76,22 @@
       textEl.classList.remove('loading', 'error');
 
       const now = new Date();
-      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
+      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        dateStyle: 'short',
+        timeStyle: 'medium'
+      })} CST`;
     } catch (err) {
-      textEl.textContent = `Error loading METARs: ${err.message}\n\n(If CORS error: API blocks cross-origin fetches. Try removing User-Agent header or use a proxy fallback.)`;
+      textEl.textContent = `Failed to load METARs:\n${err.message}\n\nOpen browser console (F12) for details.\nCommon fix: If CORS error, the API blocks browser fetches from other sites.`;
+      textEl.classList.remove('loading');
       textEl.classList.add('error');
-      console.error('Fetch error:', err);
+      console.error('METAR fetch failed:', err);
     }
   }
 
-  // Load immediately
   fetchAndDisplayMETAR();
-
-  // Refresh every 10 minutes
-  setInterval(fetchAndDisplayMETAR, 600000);
+  setInterval(fetchAndDisplayMETAR, 600000); // 10 min
 </script>
 
 </body>
-
 </html>
