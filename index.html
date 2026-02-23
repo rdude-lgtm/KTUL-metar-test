@@ -70,11 +70,15 @@
     const timeEl = document.getElementById('timestamp');
 
     try {
-      const response = await fetch(METAR_URL, {
-        headers: {
-          'User-Agent': 'METAR-Display-App/1.0 (rykervlirley@gmail.com)'  // ← Customize with your real contact/email/domain
-        }
-      });
+      const response = await fetch(
+        const PROXY = 'https://cors.sh/'
+      const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+
+      async function fetchAndDisplayMETAR() {
+        const response = await fetch(PROXY + METAR_URL, {
+          headers: { 'User-Agent': 'METAR-Display-App/1.0 (rykervlirley@gmail.com)' }
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
@@ -102,4 +106,5 @@
 </script>
 
 </body>
+
 </html>
