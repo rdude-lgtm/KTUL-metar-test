@@ -23,7 +23,7 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
     h1 {
-      font-size: 1.2rem;
+      font-size: 1.6rem;
       color: #64ffda;
       margin-bottom: 1rem;
       text-align: center;
@@ -47,12 +47,13 @@
 
 <div id="container">
   <h1>METARs: KTUL, KTIK, KIAB, KSLN, KFSM, KXNA, KEND</h1>
-  <div id="metar-text" class="loading">Loading latest METARs...</div>
+  <div id="metar-text" class="loading">Loading latest METARs (via proxy)...</div>
   <div id="timestamp" class="timestamp"></div>
 </div>
 
 <script>
   const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
 
   async function fetchAndDisplayMETAR() {
     const textEl = document.getElementById('metar-text');
@@ -60,14 +61,14 @@
 
     textEl.classList.remove('error');
     textEl.classList.add('loading');
-    textEl.textContent = 'Loading latest METARs...';
+    textEl.textContent = 'Loading latest METARs (via proxy)...';
 
     try {
-      // No custom User-Agent → keeps request "simple" (no preflight OPTIONS)
-      const response = await fetch(METAR_URL);
+      const fullUrl = PROXY_PREFIX + encodeURIComponent(METAR_URL);
+      const response = await fetch(fullUrl);
 
       if (!response.ok) {
-        throw new Error(`Server responded with HTTP ${response.status} ${response.statusText}`);
+        throw new Error(`Proxy/API returned HTTP ${response.status} ${response.statusText}`);
       }
 
       const rawText = await response.text();
@@ -82,15 +83,15 @@
         timeStyle: 'medium'
       })} CST`;
     } catch (err) {
-      textEl.textContent = `Failed to load METARs:\n${err.message}\n\nOpen browser console (F12) for details.\nCommon fix: If CORS error, the API blocks browser fetches from other sites.`;
+      textEl.textContent = `Failed to load METARs:\n${err.message}\n\n(Proxy or network issue — try refreshing. If persistent, open console (F12) and share any red errors.)`;
       textEl.classList.remove('loading');
       textEl.classList.add('error');
-      console.error('METAR fetch failed:', err);
+      console.error('Fetch failed:', err);
     }
   }
 
   fetchAndDisplayMETAR();
-  setInterval(fetchAndDisplayMETAR, 600000); // 10 min
+  setInterval(fetchAndDisplayMETAR, 600000); // 10 minutes
 </script>
 
 </body>
