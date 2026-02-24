@@ -76,80 +76,72 @@
 </div>
 
 <script>
-  const TOKEN = A9hrT6m8Xy1ksuVwjow9X1_U1opFvegbEBXMf9Q0xI4;  // ← Replace with your AVWX token
-  const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
-  const API_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info`;
+ const TOKEN = A9hrT6m8Xy1ksuVwjow9X1_U1opFvegbEBXMf9Q0xI4; // your token (no quotes)
+const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
+const API_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info&token=${TOKEN}`;
 
-  async function fetchAndDisplayMETARs() {
-    const metarsEl = document.getElementById('metars');
-    const timeEl = document.getElementById('timestamp');
+async function fetchAndDisplayMETARs() {
+  const metarsEl = document.getElementById('metars');
+  const timeEl = document.getElementById('timestamp');
 
-    metarsEl.classList.remove('error');
-    metarsEl.classList.add('loading');
-    metarsEl.innerHTML = 'Loading METARs from AVWX...';
+  metarsEl.classList.remove('error');
+  metarsEl.classList.add('loading');
+  metarsEl.innerHTML = 'Loading METARs from AVWX...';
 
-    try {
-      console.log('Token length:', TOKEN.length);  // Should be around 43 for your example
-      console.log('Full Auth header being sent:', `Token ${TOKEN}`);
-      console.log('Fetching URL:', API_URL);
-      const response = await fetch(API_URL, {
-        headers: {
-          'Authorization': `Token ${TOKEN}`
-        }
-      });
+  try {
+    const response = await fetch(API_URL);  // No headers needed now!
 
-      if (!response.ok) {
-        throw new Error(`AVWX API error: HTTP ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      let html = '';
-      data.reports.forEach(report => {
-        const station = report.station || report.meta?.station || 'Unknown';
-        const raw = report.raw || 'No raw report';
-        const rules = report.flight_rules || 'Unknown';
-        const rulesClass = rules.toLowerCase() === 'vfr' ? 'vfr' :
-                           rules.toLowerCase() === 'mvfr' ? 'mvfr' :
-                           rules.toLowerCase() === 'ifr' ? 'ifr' :
-                           rules.toLowerCase() === 'lifr' ? 'lifr' : '';
-
-        html += `
-          <div class="metar-item">
-            <div class="station">${station}</div>
-            <div class="rules ${rulesClass}">${rules}</div>
-            <div class="raw">${raw}</div>
-            <div class="details">
-              Wind: ${report.wind_direction?.repr || '?'}° at ${report.wind_speed?.repr || '?'} kt<br>
-              Visibility: ${report.visibility?.repr || '?'} sm<br>
-              Temp/Dew: ${report.temperature?.repr || '?'}°C / ${report.dewpoint?.repr || '?'}°C<br>
-              Altimeter: ${report.altimeter?.repr || '?'} inHg<br>
-              Clouds: ${report.clouds?.map(c => c.repr).join(', ') || 'Clear/Sky obscured'}<br>
-            </div>
-          </div>
-        `;
-      });
-
-      metarsEl.innerHTML = html || '<p>No reports available.</p>';
-      metarsEl.classList.remove('loading', 'error');
-
-      const now = new Date();
-      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
-    } catch (err) {
-      metarsEl.innerHTML = `Failed to load METARs:\n${err.message}\n\nCheck token validity or network. Open console (F12) for details.`;
-      metarsEl.classList.remove('loading');
-      metarsEl.classList.add('error');
-      console.error('AVWX fetch error:', err);
+    if (!response.ok) {
+      const errText = await response.text().catch(() => 'No details');
+      throw new Error(`HTTP ${response.status} - ${errText}`);
     }
+
+    const data = await response.json();
+
+    let html = '';
+    (data.reports || []).forEach(report => {
+      const station = report.station || report.meta?.station || 'Unknown';
+      const raw = report.raw || 'No raw report';
+      const rules = report.flight_rules || 'Unknown';
+      const rulesClass = rules.toLowerCase() === 'vfr' ? 'vfr' :
+                         rules.toLowerCase() === 'mvfr' ? 'mvfr' :
+                         rules.toLowerCase() === 'ifr' ? 'ifr' :
+                         rules.toLowerCase() === 'lifr' ? 'lifr' : '';
+
+      html += `
+        <div class="metar-item">
+          <div class="station">${station}</div>
+          <div class="rules ${rulesClass}">${rules}</div>
+          <div class="raw">${raw}</div>
+          <div class="details">
+            Wind: ${report.wind_direction?.repr || '?'}° at ${report.wind_speed?.repr || '?'} kt<br>
+            Visibility: ${report.visibility?.repr || '?'} sm<br>
+            Temp/Dew: ${report.temperature?.repr || '?'}°C / ${report.dewpoint?.repr || '?'}°C<br>
+            Altimeter: ${report.altimeter?.repr || '?'} inHg<br>
+            Clouds: ${report.clouds?.map(c => c.repr).join(', ') || 'Clear/Sky obscured'}<br>
+          </div>
+        </div>
+      `;
+    });
+
+    metarsEl.innerHTML = html || '<p>No reports available right now.</p>';
+    metarsEl.classList.remove('loading', 'error');
+
+    const now = new Date();
+    timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
+  } catch (err) {
+    metarsEl.innerHTML = `Failed to load METARs:\n${err.message || 'Unknown error'}\n\nPossible causes: Invalid token, rate limit, or network block.`;
+    metarsEl.classList.remove('loading');
+    metarsEl.classList.add('error');
   }
+}
 
-  // Load only when the page loads / refreshes
-  fetchAndDisplayMETARs();
-
+fetchAndDisplayMETARs();
   // No automatic refresh anymore — comment line below was removed:
   // setInterval(fetchAndDisplayMETARs, 600000);
 </script>
 
 </body>
 </html>
+
 
