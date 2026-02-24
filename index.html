@@ -1,17 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>JS Test</title>
-  <style>body {background:#000; color:#0f0; font-family:monospace; padding:2rem; font-size:1.5rem;}</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>METARs from AVWX - Multiple Stations</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #0a192f;
+      color: #e0fbfc;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.4;
+    }
+    #container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #112240;
+      border: 1px solid #233554;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-size: 1.6rem;
+      color: #64ffda;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .metar-item {
+      background: #0d1b2a;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      border: 1px solid #415a77;
+    }
+    .station {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #a5f3fc;
+      margin-bottom: 0.5rem;
+    }
+    .raw {
+      font-size: 1rem;
+      color: #ccd6f6;
+      white-space: pre-wrap;
+      margin: 0.5rem 0;
+    }
+    .rules {
+      font-weight: bold;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin: 0.5rem 0;
+    }
+    .vfr { background: #28a745; color: white; }
+    .mvfr { background: #ffc107; color: black; }
+    .ifr { background: #dc3545; color: white; }
+    .lifr { background: #6c757d; color: white; }
+    .details {
+      font-size: 1.05rem;
+      color: #e0fbfc;
+    }
+    .loading { color: #8892b0; font-style: italic; }
+    .error { color: #ff6b6b; font-style: italic; white-space: pre-wrap; }
+    .timestamp { font-size: 0.9rem; color: #8892b0; text-align: right; margin-top: 1rem; }
+  </style>
 </head>
 <body>
-  <h1>Test Page - If you see this + updating time, JS works</h1>
-  <p>Time: <span id="time">loading...</span></p>
-  <p>If time shows current CST time, JS executed. If stuck on "loading...", JS blocked or network issue.</p>
 
-  <script>
-    document.getElementById('time').textContent = new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'});
-  </script>
+<div id="container">
+  <h1>METARs: KTUL, KTIK, KIAB, KSLN, KFSM, KXNA, KEND</h1>
+  <div id="metars" class="loading">Loading METARs from AVWX...</div>
+  <div id="timestamp" class="timestamp"></div>
+</div>
+
+<script>
+  const TOKEN = 'YOUR_AVWX_TOKEN_HERE';  // ← Replace with your AVWX token
+  const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
+  const API_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info`;
+
+  async function fetchAndDisplayMETARs() {
+    const metarsEl = document.getElementById('metars');
+    const timeEl = document.getElementById('timestamp');
+
+    metarsEl.classList.remove('error');
+    metarsEl.classList.add('loading');
+    metarsEl.innerHTML = 'Loading METARs from AVWX...';
+
+    try {
+      const response = await fetch(API_URL, {
+        headers: {
+          'Authorization': `Token ${TOKEN}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`AVWX API error: HTTP ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // data.reports is array of station objects
+      let html = '';
+      data.reports.forEach(report => {
+        const station = report.station || report.meta?.station || 'Unknown';
+        const raw = report.raw || 'No raw report';
+        const rules = report.flight_rules || 'Unknown';
+        const rulesClass = rules.toLowerCase() === 'vfr' ? 'vfr' :
+                           rules.toLowerCase() === 'mvfr' ? 'mvfr' :
+                           rules.toLowerCase() === 'ifr' ? 'ifr' :
+                           rules.toLowerCase() === 'lifr' ? 'lifr' : '';
+
+        html += `
+          <div class="metar-item">
+            <div class="station">${station}</div>
+            <div class="rules ${rulesClass}">${rules}</div>
+            <div class="raw">${raw}</div>
+            <div class="details">
+              Wind: ${report.wind_direction?.repr || '?'}° at ${report.wind_speed?.repr || '?'} kt<br>
+              Visibility: ${report.visibility?.repr || '?'} sm<br>
+              Temp/Dew: ${report.temperature?.repr || '?'}°C / ${report.dewpoint?.repr || '?'}°C<br>
+              Altimeter: ${report.altimeter?.repr || '?'} inHg<br>
+              Clouds: ${report.clouds?.map(c => c.repr).join(', ') || 'Clear/Sky obscured'}<br>
+            </div>
+          </div>
+        `;
+      });
+
+      metarsEl.innerHTML = html || '<p>No reports available.</p>';
+      metarsEl.classList.remove('loading', 'error');
+
+      const now = new Date();
+      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
+    } catch (err) {
+      metarsEl.innerHTML = `Failed to load METARs:\n${err.message}\n\nCheck token validity or network. Open console (F12) for details.`;
+      metarsEl.classList.remove('loading');
+      metarsEl.classList.add('error');
+      console.error('AVWX fetch error:', err);
+    }
+  }
+
+  fetchAndDisplayMETARs();
+  setInterval(fetchAndDisplayMETARs, 600000); // Refresh every 10 minutes
+</script>
+
 </body>
 </html>
