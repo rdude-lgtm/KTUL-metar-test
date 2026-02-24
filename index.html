@@ -86,8 +86,11 @@
     metarsEl.innerHTML = 'Loading METARs (NOAA direct)...';
 
     try {
-      const response = await fetch(BASE_URL);  // ← direct, no proxy
-
+      const response = await fetch(BASE_URL, {
+  headers: {
+    'User-Agent': 'KTUL-Metar-Display/1.0 (ryker.lirley@outlook.com)'  // change 'r@example.com' to your real email or a simple note
+  }
+});
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -112,6 +115,7 @@
 
 </body>
 </html>
+
 
 
 
