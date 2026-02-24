@@ -78,18 +78,15 @@
 <script>
   const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
   const BASE_URL = `https://aviationweather.gov/api/data/metar?ids=${STATIONS}&format=raw&taf=false&hours=1.5`;
-  // Use proxy to bypass any remaining CORS/network quirks
-  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
-  const API_URL = PROXY_PREFIX + encodeURIComponent(BASE_URL);
 
   async function fetchAndDisplayMETARs() {
     const metarsEl = document.getElementById('metars');
     const timeEl = document.getElementById('timestamp');
 
-    metarsEl.innerHTML = 'Loading METARs (NOAA test)...';
+    metarsEl.innerHTML = 'Loading METARs (NOAA direct)...';
 
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(BASE_URL);  // ← direct, no proxy
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -97,7 +94,6 @@
 
       const rawText = await response.text();
 
-      // Simple raw display (lines split for readability)
       const lines = rawText.trim().split('\n').filter(line => line.trim());
       let html = lines.map(line => `<div style="margin-bottom:0.8rem; font-size:1.1rem;">${line}</div>`).join('');
 
@@ -107,7 +103,7 @@
       const now = new Date();
       timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
     } catch (err) {
-      metarsEl.innerHTML = `Fetch failed:\n${err.message || 'Connection/network issue'}\n\nIf stuck here, your network may block API calls. Try manual METAR copy from aviationweather.gov.`;
+      metarsEl.innerHTML = `Fetch failed:\n${err.message || 'Connection/network issue'}\n\nIf this shows 403/429, try adding User-Agent header or proxy back.`;
     }
   }
 
@@ -116,6 +112,7 @@
 
 </body>
 </html>
+
 
 
 
