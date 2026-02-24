@@ -1,41 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KTUL Area METARs</title>
   <style>
     body {
+      font-family: monospace;
+      background: #000;
+      color: #0f0;
       margin: 0;
-      padding: 0;
-      background: #000;
-      color: #00ff00;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 1.25rem;
-      height: 100vh;
-      overflow: hidden;
+      padding: 16px;
+      line-height: 1;
+      font-size: 1.1rem;
     }
-    iframe {
-      width: 100%;
-      height: 100vh;
-      border: none;
+    #reports {
+      white-space: pre-wrap;
       background: #000;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      min-height: 100px;
     }
-    .header {
-      text-align: center;
-      padding: 8px;
-      background: #111;
-      color: #00ff00;
-      font-size: 1.4rem;
-      border-bottom: 1px solid #333;
+    .loading {
+      color: #888;
+      font-style: italic;
+    }
+    .error {
+      color: #f55;
+      font-style: italic;
+    }
+    strong {
+      color: #0ff;          /* bright cyan for bold ICAO codes */
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div class="header">Current KTUL Area METARs</div>
-  <iframe 
-    src="https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5"
-    title="Raw METARs">
-  </iframe>
+
+<div id="reports" class="loading">Loading METARs...</div>
+
+<script>
+  const PROXY = 'https://api.allorigins.win/raw?url=';
+  const TARGET_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+  const API_URL = PROXY + encodeURIComponent(TARGET_URL);
+
+  async function loadMetars() {
+    const el = document.getElementById('reports');
+    el.classList.remove('error');
+    el.classList.add('loading');
+    el.textContent = 'Loading METARs...';
+
+    try {
+      const res = await fetch(API_URL, {
+        headers: {
+          'User-Agent': 'KTUL-Metar-Display/1.0 (personal-signage)'
+        }
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const text = await res.text();
+
+      // Split into lines and keep only real METAR/SPECI lines
+      const lines = text
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .filter(l => l.startsWith('METAR ') || l.startsWith('SPECI '));
+
+      if (lines.length === 0) {
+        el.textContent = 'No valid METAR lines found in response.';
+        el.classList.add('error');
+        return;
+      }
+
+      // Remove "METAR " or "SPECI " prefix and bold the ICAO code (now the first word)
+      const formattedLines = lines.map(line => {
+        let cleaned = line.replace(/^(METAR|SPECI)\s+/, ''); // remove prefix + space
+        const parts = cleaned.split(' ');
+        if (parts.length > 0) {
+          parts[0] = `<strong>${parts[0]}</strong>`;
+        }
+        return parts.join(' ');
+      });
+
+      el.innerHTML = formattedLines.join('<br><br>');
+      el.classList.remove('loading', 'error');
+    } catch (err) {
+      el.textContent = `Failed to load METARs:\n${err.message || 'Network error'}\n\nTry reloading or check network/proxy.`;
+      el.classList.remove('loading');
+      el.classList.add('error');
+    }
+  }
+
+  loadMetars();
+
+  // Optional auto-refresh every 10 minutes
+  // setInterval(loadMetars, 600000);
+</script>
+
 </body>
 </html>
