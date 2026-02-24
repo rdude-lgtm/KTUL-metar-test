@@ -76,13 +76,9 @@
 </div>
 
 <script>
-  const TOKEN =A9hrT6m8Xy1ksuVwjow9X1_U1opFvegbEBXMf9Q0xI4;  // ← make sure this is your actual token (no quotes around it)
+  const TOKEN = A9hrT6m8Xy1ksuVwjow9X1_U1opFvegbEBXMf9Q0xI4;  // ← Replace with your AVWX token
   const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
-  const BASE_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info`;
-
-  // Proxy to bypass CORS/pre-flight issues with Authorization header
-  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
-  const API_URL = PROXY_PREFIX + encodeURIComponent(BASE_URL);
+  const API_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info`;
 
   async function fetchAndDisplayMETARs() {
     const metarsEl = document.getElementById('metars');
@@ -90,26 +86,23 @@
 
     metarsEl.classList.remove('error');
     metarsEl.classList.add('loading');
-    metarsEl.innerHTML = 'Loading METARs from AVWX (via proxy)...';
+    metarsEl.innerHTML = 'Loading METARs from AVWX...';
 
     try {
       const response = await fetch(API_URL, {
-        mode: 'cors',
-        cache: 'no-cache',
         headers: {
           'Authorization': `Token ${TOKEN}`
         }
       });
 
       if (!response.ok) {
-        const errText = await response.text().catch(() => 'No details');
-        throw new Error(`HTTP ${response.status} - ${errText}`);
+        throw new Error(`AVWX API error: HTTP ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
 
       let html = '';
-      (data.reports || []).forEach(report => {
+      data.reports.forEach(report => {
         const station = report.station || report.meta?.station || 'Unknown';
         const raw = report.raw || 'No raw report';
         const rules = report.flight_rules || 'Unknown';
@@ -134,26 +127,25 @@
         `;
       });
 
-      metarsEl.innerHTML = html || '<p>No reports available right now.</p>';
+      metarsEl.innerHTML = html || '<p>No reports available.</p>';
       metarsEl.classList.remove('loading', 'error');
 
       const now = new Date();
       timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
     } catch (err) {
-      metarsEl.innerHTML = `Failed to load METARs:\n${err.message}\n\nCheck browser console (F12 → Console tab) for more info.\nLikely CORS or token issue — proxy should help.`;
+      metarsEl.innerHTML = `Failed to load METARs:\n${err.message}\n\nCheck token validity or network. Open console (F12) for details.`;
       metarsEl.classList.remove('loading');
       metarsEl.classList.add('error');
       console.error('AVWX fetch error:', err);
     }
   }
 
+  // Load only when the page loads / refreshes
   fetchAndDisplayMETARs();
-  // No auto-refresh
+
+  // No automatic refresh anymore — comment line below was removed:
+  // setInterval(fetchAndDisplayMETARs, 600000);
 </script>
 
 </body>
 </html>
-
-
-
-
