@@ -31,7 +31,7 @@
     #metar-text {
       white-space: pre-wrap;
       background: #0d1b2a;
-      padding: 1rem;
+      padding: 1.2rem;
       border-radius: 6px;
       border: 1px solid #415a77;
       font-size: .8rem;
@@ -52,26 +52,23 @@
 </div>
 
 <script>
-  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
   const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
+  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY_MS = 4000; // 4 seconds between retries
-
-  async function fetchWithRetry(attempt = 1) {
+  async function fetchAndDisplayMETAR() {
     const textEl = document.getElementById('metar-text');
     const timeEl = document.getElementById('timestamp');
 
     textEl.classList.remove('error');
     textEl.classList.add('loading');
-    textEl.textContent = `Loading latest METARs (attempt ${attempt}/${MAX_RETRIES})...`;
+    textEl.textContent = 'Loading latest METARs (via proxy)...';
 
     try {
       const fullUrl = PROXY_PREFIX + encodeURIComponent(METAR_URL);
       const response = await fetch(fullUrl);
 
       if (!response.ok) {
-        throw new Error(`Proxy/API returned HTTP ${response.status}`);
+        throw new Error(`Proxy/API returned HTTP ${response.status} ${response.statusText}`);
       }
 
       const rawText = await response.text();
@@ -85,40 +82,17 @@
         dateStyle: 'short',
         timeStyle: 'medium'
       })} CST`;
-
-      return true; // success
     } catch (err) {
-      console.warn(`Fetch attempt ${attempt} failed:`, err.message);
-
-      if (attempt < MAX_RETRIES) {
-        // Wait and retry
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-        return fetchWithRetry(attempt + 1);
-      } else {
-        // All retries failed
-        textEl.textContent = `Failed to load METARs after ${MAX_RETRIES} attempts:\n${err.message}\n\nTry refreshing the page. Data usually returns after a few minutes.`;
-        textEl.classList.remove('loading');
-        textEl.classList.add('error');
-        console.error('All fetch retries failed:', err);
-        return false;
-      }
+      textEl.textContent = `Failed to load METARs:\n${err.message}\n\n(Proxy or network issue — try refreshing. If persistent, open console (F12) and share any red errors.)`;
+      textEl.classList.remove('loading');
+      textEl.classList.add('error');
+      console.error('Fetch failed:', err);
     }
   }
 
-  async function updateMETAR() {
-    await fetchWithRetry();
-  }
-
-  // Initial load
-  updateMETAR();
-
-  // Refresh every 10 minutes regardless of success/failure
-  setInterval(updateMETAR, 600000);
+  fetchAndDisplayMETAR();
+  setInterval(fetchAndDisplayMETAR, 600000); // 10 minutes
 </script>
 
 </body>
 </html>
-
-
-
-
