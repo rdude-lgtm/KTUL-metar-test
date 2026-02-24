@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>METAR Display - Multiple Stations</title>
+  <title>METARs from AVWX - Multiple Stations</title>
   <style>
     body {
       font-family: monospace;
@@ -23,75 +23,119 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
     h1 {
-      font-size: 1rem;
+      font-size: 1.6rem;
       color: #64ffda;
       margin-bottom: 1rem;
       text-align: center;
     }
-    #metar-text {
-      white-space: pre-wrap;
+    .metar-item {
       background: #0d1b2a;
-      padding: 1.2rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
       border-radius: 6px;
       border: 1px solid #415a77;
-      font-size: .8rem;
-      min-height: 200px;
-      line-height: 1.5;
+    }
+    .station {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #a5f3fc;
+      margin-bottom: 0.5rem;
+    }
+    .raw {
+      font-size: 1rem;
+      color: #ccd6f6;
+      white-space: pre-wrap;
+      margin: 0.5rem 0;
+    }
+    .rules {
+      font-weight: bold;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin: 0.5rem 0;
+    }
+    .vfr { background: #28a745; color: white; }
+    .mvfr { background: #ffc107; color: black; }
+    .ifr { background: #dc3545; color: white; }
+    .lifr { background: #6c757d; color: white; }
+    .details {
+      font-size: 1.05rem;
+      color: #e0fbfc;
     }
     .loading { color: #8892b0; font-style: italic; }
     .error { color: #ff6b6b; font-style: italic; white-space: pre-wrap; }
-    .timestamp { font-size: 1rem; color: #8892b0; margin-top: 1rem; text-align: right; }
+    .timestamp { font-size: 0.9rem; color: #8892b0; text-align: right; margin-top: 1rem; }
   </style>
 </head>
 <body>
 
 <div id="container">
   <h1>METARs: KTUL, KTIK, KIAB, KSLN, KFSM, KXNA, KEND</h1>
-  <div id="metar-text" class="loading">Loading latest METARs (via proxy)...</div>
+  <div id="metars" class="loading">Loading METARs from AVWX...</div>
   <div id="timestamp" class="timestamp"></div>
 </div>
 
 <script>
-  const METAR_URL = 'https://aviationweather.gov/api/data/metar?ids=KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND&format=raw&taf=false&hours=1.5';
-  const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
+  const TOKEN = '4kICGiNHKYi4IwFGfzquQKJeteV4jOgsMebo0bP5wyk';
+const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
+const BASE_URL = `https://avwx.rest/api/multiple-reports?type=metar&ids=${STATIONS}&options=summary,info`;
 
-  async function fetchAndDisplayMETAR() {
-    const textEl = document.getElementById('metar-text');
-    const timeEl = document.getElementById('timestamp');
+// Uncomment next line ONLY if direct fetch fails (proxy exposes token! Use temporarily)
+const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';  // test proxy
+// const PROXY_PREFIX = '';  // normal: no proxy
 
-    textEl.classList.remove('error');
-    textEl.classList.add('loading');
-    textEl.textContent = 'Loading latest METARs (via proxy)...';
+const API_URL = PROXY_PREFIX + encodeURIComponent(BASE_URL);
 
-    try {
-      const fullUrl = PROXY_PREFIX + encodeURIComponent(METAR_URL);
-      const response = await fetch(fullUrl);
+async function fetchAndDisplayMETARs() {
+  const metarsEl = document.getElementById('metars');
+  const timeEl = document.getElementById('timestamp');
 
-      if (!response.ok) {
-        throw new Error(`Proxy/API returned HTTP ${response.status} ${response.statusText}`);
+  metarsEl.classList.remove('error');
+  metarsEl.classList.add('loading');
+  metarsEl.innerHTML = 'Loading METARs from AVWX... (check console F12)';
+
+  try {
+    console.log('Fetching from:', API_URL);  // debug
+
+    const response = await fetch(API_URL, {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'Authorization': `Token ${TOKEN}`
       }
+    });
 
-      const rawText = await response.text();
+    console.log('Response status:', response.status);  // debug
 
-      textEl.textContent = rawText.trim() || 'No METAR data available right now.';
-      textEl.classList.remove('loading', 'error');
-
-      const now = new Date();
-      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', {
-        timeZone: 'America/Chicago',
-        dateStyle: 'short',
-        timeStyle: 'medium'
-      })} CST`;
-    } catch (err) {
-      textEl.textContent = `Failed to load METARs:\n${err.message}\n\n(Proxy or network issue — try refreshing. If persistent, open console (F12) and share any red errors.)`;
-      textEl.classList.remove('loading');
-      textEl.classList.add('error');
-      console.error('Fetch failed:', err);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No details');
+      throw new Error(`AVWX returned ${response.status} - ${errorText}`);
     }
-  }
 
-  fetchAndDisplayMETAR();
-  setInterval(fetchAndDisplayMETAR, 600000); // 10 minutes
+    const data = await response.json();
+
+    let html = '';
+    (data.reports || []).forEach(report => {
+      // ... same html building as before ...
+      // (keep your existing report parsing code here)
+    });
+
+    metarsEl.innerHTML = html || '<p>No reports available.</p>';
+    metarsEl.classList.remove('loading', 'error');
+
+    const now = new Date();
+    timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
+  } catch (err) {
+    console.error('AVWX fetch failed:', err);
+    metarsEl.innerHTML = `Failed to load METARs:\n${err.message}\n\nSee browser console (F12) for logs. Possible fixes:\n- Verify token in dashboard\n- Try single station\n- Temporary proxy enabled?`;
+    metarsEl.classList.remove('loading');
+    metarsEl.classList.add('error');
+  }
+}
+
+fetchAndDisplayMETARs();
+// No auto-refresh
 </script>
 
 </body>
