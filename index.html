@@ -76,15 +76,17 @@
 </div>
 
 <script>
-  const TOKEN = A9hrT6m8Xy1ksuVwjow9X1_U1opFvegbEBXMf9Q0xI4;
-  const STATION = 'KTUL'; // test single
-  const BASE_URL = `https://avwx.rest/api/metar/${STATION}?options=summary,info&token=${TOKEN}`;
+  const STATIONS = 'KTUL,KTIK,KIAB,KSLN,KFSM,KXNA,KEND';
+  const BASE_URL = `https://aviationweather.gov/api/data/metar?ids=${STATIONS}&format=raw&taf=false&hours=1.5`;
+  // Use proxy to bypass any remaining CORS/network quirks
   const PROXY_PREFIX = 'https://api.allorigins.win/raw?url=';
   const API_URL = PROXY_PREFIX + encodeURIComponent(BASE_URL);
 
   async function fetchAndDisplayMETARs() {
     const metarsEl = document.getElementById('metars');
-    metarsEl.innerHTML = 'Loading KTUL test (proxy + token in URL)...';
+    const timeEl = document.getElementById('timestamp');
+
+    metarsEl.innerHTML = 'Loading METARs (NOAA test)...';
 
     try {
       const response = await fetch(API_URL);
@@ -93,24 +95,19 @@
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json();
+      const rawText = await response.text();
 
-      let html = `
-        <div class="metar-item">
-          <div class="station">${data.station || 'KTUL'}</div>
-          <div class="rules">${data.flight_rules || 'Unknown'}</div>
-          <div class="raw">${data.raw || 'No raw'}</div>
-          <div class="details">
-            Wind: ${data.wind_direction?.repr || '?'}° at ${data.wind_speed?.repr || '?'} kt<br>
-            Visibility: ${data.visibility?.repr || '?'} sm<br>
-            Temp/Dew: ${data.temperature?.repr || '?'}°C / ${data.dewpoint?.repr || '?'}°C<br>
-          </div>
-        </div>
-      `;
+      // Simple raw display (lines split for readability)
+      const lines = rawText.trim().split('\n').filter(line => line.trim());
+      let html = lines.map(line => `<div style="margin-bottom:0.8rem; font-size:1.1rem;">${line}</div>`).join('');
 
-      metarsEl.innerHTML = html;
+      metarsEl.innerHTML = html || '<p>No METAR data available right now.</p>';
+      metarsEl.style.color = '#e0fbfc';
+
+      const now = new Date();
+      timeEl.textContent = `Last fetched: ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'medium' })} CST`;
     } catch (err) {
-      metarsEl.innerHTML = `Test failed: ${err.message || 'Connection issue'}\n\nLikely network/proxy block.`;
+      metarsEl.innerHTML = `Fetch failed:\n${err.message || 'Connection/network issue'}\n\nIf stuck here, your network may block API calls. Try manual METAR copy from aviationweather.gov.`;
     }
   }
 
@@ -119,6 +116,7 @@
 
 </body>
 </html>
+
 
 
 
