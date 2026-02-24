@@ -89,6 +89,9 @@
     metarsEl.innerHTML = 'Loading METARs from AVWX...';
 
     try {
+      console.log('Token length:', TOKEN.length);  // Should be around 43 for your example
+      console.log('Full Auth header being sent:', `Token ${TOKEN}`);
+      console.log('Fetching URL:', API_URL);
       const response = await fetch(API_URL, {
         headers: {
           'Authorization': `Token ${TOKEN}`
@@ -149,3 +152,4 @@
 
 </body>
 </html>
+
